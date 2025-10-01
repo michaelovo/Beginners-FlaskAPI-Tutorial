@@ -12,7 +12,7 @@ items = [
 item_id_counter = 1
 
 #fetch all items
-@app.route('/item/all', methods=['GET'])
+@app.route('/api/v1/item/all', methods=['GET'])
 def get_items():
     if not items:
         return jsonify(make_response("success", "No items found", [], 200)[0]), 200
@@ -25,7 +25,7 @@ def get_items():
 
 
 #fetch single item by id
-@app.route('/item/<int:item_id>', methods=['GET'])
+@app.route('/api/v1/item/<int:item_id>', methods=['GET'])
 def get_item(item_id):
     single_item = next((item for item in items if item['id'] == item_id), None)
     if single_item:
@@ -40,7 +40,7 @@ def get_item(item_id):
 
 
 #add new item
-@app.route('/item/add', methods=['POST'])
+@app.route('/api/v1/item/add', methods=['POST'])
 def add_item():
     global item_id_counter
     data = request.get_json()
@@ -66,7 +66,7 @@ def add_item():
 
 
 # Update a item
-@app.route("/item/<int:item_id>/update", methods=["PUT"])
+@app.route("/api/v1/item/<int:item_id>/update", methods=["PUT"])
 def update_item(item_id):
     data = request.get_json()
     item = next((t for t in items if t["id"] == item_id), None)
@@ -88,7 +88,7 @@ def update_item(item_id):
     )[0]), 200
 
 #delete item
-@app.route('/item/<int:item_id>/delete', methods=['DELETE'])
+@app.route('/api/v1/item/<int:item_id>/delete', methods=['DELETE'])
 def delete_item(item_id):
     global items
     items = [item for item in items if item['id'] != item_id]
