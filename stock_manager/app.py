@@ -6,8 +6,8 @@ app = Flask(__name__)
 
 #in memory data store
 items = [
-        # {"id": 1, "name": "Rice", "quantity": 10, "unit_price": 65000, "total_price": 650000, "description": "50kg bag of rice"},
-        # {"id": 2, "name": "Salt", "quantity": 5, "unit_price": 400, "total_price": 2000, "description": "2kg dangote salt"}
+        {"id": 1, "name": "Rice", "quantity": 10, "unit_price": 65000, "total_price": 650000, "description": "50kg bag of rice"},
+        {"id": 2, "name": "Salt", "quantity": 5, "unit_price": 400, "total_price": 2000, "description": "2kg dangote salt"}
 ]
 item_id_counter = 1
 
@@ -44,10 +44,42 @@ def get_item(item_id):
 def add_item():
     global item_id_counter
     data = request.get_json()
-    if not data or 'name' not in data:
-        return jsonify({'error': 'Invalid input'}), 400
+
+    # Validate required fields
+    if not data or 'name' not in data or 'unit_price' not in data or 'quantity' not in data:
+        return jsonify({
+            "status": "error",
+            "message": "Missing required fields: name, quantity, unit_price"
+        }), 400
+    
+    # Validate data types
+    if not isinstance(data['name'], str) or not isinstance(data['unit_price'], (int, float)) or not isinstance(data['quantity'], int):
+        return jsonify({
+            "status": "error",
+            "message": "Invalid data types for fields: name must be a string, quantity must be an integer, unit_price must be a number"
+        }), 400
+
+    #validate name is not empty
+    if not data['name'].strip():
+        return jsonify({
+            "status": "error",
+            "message": "Item name cannot be empty"
+        }), 400
+    
+    # Validate quantity and unit_price are non-negative
+    if data['quantity'] <= 0 or data['unit_price'] <= 0:
+        return jsonify({
+            "status": "error",
+            "message": "Quantity and unit_price must be non-negative/greater than zero"
+        }), 400
+
+    
+    # Check for duplicate item names (case-insensitive)
+    if any(item['name'].lower() == data['name'].lower() for item in items):
+        return jsonify(make_response("error", f"Item with name '{data['name']}' already exists", None, 400)[0]), 400
+       
     new_item = {
-        'id': item_id_counter,
+        "id": len(items) + 1,
         'name': data['name'],
         'quantity': data.get('quantity', 1),
         'unit_price': data['unit_price'],
