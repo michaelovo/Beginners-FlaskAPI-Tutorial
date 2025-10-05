@@ -12,9 +12,9 @@ next_task_id = 1
 
 
 
-# ============ USERS ENDPOINTS ============
 
 
+# ============ USERS MANAGER ENDPOINTS ============
 
 #create a user
 @app.route('/api/v1/user/add', methods=['POST'])
@@ -165,8 +165,10 @@ def get_tasks_by_user(user_id):
     if user_id not in users:
         return not_found_response(f"User with id {user_id} not found")
     
+    # Filter tasks by user_id
     user_tasks = [task for task in tasks.values() if task['user_id'] == user_id]
     
+    # Check if user has tasks
     if not user_tasks:
         return success_response(f"No tasks assign to user with id {user_id} at the moment", [])
     
@@ -177,6 +179,13 @@ def get_tasks_by_user(user_id):
 @app.route('/api/v1/user/<int:user_id>/delete', methods=['DELETE'])
 def delete_user(user_id):
     user = users.pop(user_id, None) # Remove user by id
+
+    # Set associated tasks' user_id to None
+    for task in tasks.values():
+        if task['user_id'] == user_id:
+            task['user_id'] = None
+    
+     # Check if user exists
     if not user:
         return not_found_response(f"User with id {user_id} not found")
     
@@ -184,9 +193,9 @@ def delete_user(user_id):
 
 
 
-# TASK SETTINGS
+# ============ TASK MANAGER ENDPOINTS ============
 
-# Create a task for a user
+# Create a task
 @app.route('/api/v1/task/add', methods=['POST'])
 def create_task():
     global next_task_id # Access the global task ID counter
