@@ -35,23 +35,27 @@ def format_user(user):
         'phone': user['phone']
     }
 
-# Helper functions to format todo
-def format_todo(todo):
+# Helper functions to format task
+def format_task(task):
     return {
-        'id': todo['id'],
-        'user_id': todo['user_id'],
-        'title': todo['title'],
-        'description': todo.get('description', ''),
-        'completed': todo.get('completed', False)
+        'id': task['id'],
+        'user_id': task['user_id'],
+        'title': task['title'],
+        'description': task['description'],
+        'status': task['status'],
+        'duration': task['duration'],
+        'created_at': task['created_at'],
+        'updated_at': task['updated_at'],
+        'completed_at': task['completed_at']    
     }
 
 # Helper functions to format list of users
 def format_users(users):
     return [format_user(user) for user in users]
 
-# Helper functions to format list of todos
-def format_todos(todos):
-    return [format_todo(todo) for todo in todos]
+# Helper functions to format list of tasks
+def format_tasks(tasks):
+    return [format_task(task) for task in tasks]
 
 # Success helper functions
 def success_response(message, data=None, status_code=200):
@@ -74,11 +78,11 @@ def internal_error_response(message="Internal server error"):
 def format_response(data, data_type):
     if data_type == 'user':
         return format_user(data)
-    elif data_type == 'todo':
-        return format_todo(data)
+    elif data_type == 'task':
+        return format_task(data)
     elif data_type == 'users':
         return format_users(data)
-    elif data_type == 'todos':
-        return format_todos(data)
+    elif data_type == 'tasks':
+        return format_tasks(data)
     else:
         return data
