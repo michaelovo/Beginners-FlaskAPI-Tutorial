@@ -205,7 +205,7 @@ def create_task():
         return bad_request_response("user_id, title, duration and description fields are required")
     
     # user_id field is in the payload then extract it and perform validation else set default to null
-    if 'user_id' in data and isinstance(data['user_id'], int) and not data['user_id'].strip() and data['user_id'] <= 0:
+    if 'user_id' in data and isinstance(data['user_id'], int) and data['user_id'] <= 0:
         user_id = data['user_id'] # Extract user_id from request data
 
         #validate user_id is an integer
