@@ -129,4 +129,4 @@ def delete_item(item_id):
         "Item deleted successfully",
         None,
         200
-    )[0]), 200 
+    )[0]), 200

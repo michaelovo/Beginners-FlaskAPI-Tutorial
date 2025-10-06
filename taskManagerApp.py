@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from datetime import datetime,timezone
 from utils.response import format_response, format_user, format_task, format_users, format_tasks, make_response, success_response, not_found_response, bad_request_response
+from utils.validators import allow_alphalnumeric_length, positive_integer, validate_email, validate_field_length, validate_payload, validate_phone, validate_required_fields, validate_unique_field
 
 app = Flask(__name__)
 
@@ -21,49 +22,33 @@ next_task_id = 1
 def create_user():
     global next_user_id
     data = request.get_json()
-    if not data or 'firstName' not in data or 'lastName' not in data or 'email' not in data or 'phone' not in data:
-        return bad_request_response("firstName, lastName, email and phone fields are required")
-    
-    # Validate firstName and lastName are not empty
-    if not data['firstName'].strip() or not data['lastName'].strip():
-        return bad_request_response("firstName and lastName cannot be empty")
 
-    #Validate firstName and lastName to be strings
-    if not isinstance(data['firstName'], str) or not isinstance(data['lastName'], str):
-        return bad_request_response("firstName and lastName must be strings")
-    
-    #Validate firstName and LastNmae to be minimum of two(2) characters
-    if not data['firstName'].isalpha() or not data['lastName'].isalpha() or len(data['firstName']) < 2 or len(data['lastName']) < 2:
-        return bad_request_response("firstName and lastName must be alphabetic and at least 2 characters long")
+    # Validate payload
+    payload = validate_payload(data)
+    if payload:
+        return bad_request_response(payload)
+
+    # Validate required fields
+    error = validate_required_fields(data, 'firstName') or validate_required_fields(data,'lastName') or validate_required_fields(data,'email') or validate_required_fields(data,'phone') or     validate_field_length(data,'firstName') or validate_field_length(data,'lastName')
+    if error:
+        return bad_request_response(error)
+
     
     # Validate email format (basic validation)
-    if '@' not in data['email'] or '.' not in data['email']:
+    if not validate_email(data['email']):
         return bad_request_response("Invalid email format")
     
-    # Validate email to not be empty
-    if not data['email'].strip():
-        return bad_request_response("Email cannot be empty")
-    
     # Validate phone number (basic validation)
-    if not data['phone'].isdigit() or len(data['phone']) < 11:
-        return bad_request_response("Phone number must be numeric and at least 7 digits long")
-    
-    # Validate phone to not be empty
-    if not data['phone'].strip():
-        return bad_request_response("Phone number cannot be empty")
-    
+    if not validate_phone(data['phone']):
+                return bad_request_response("Phone number must be numeric and at least 11 digits long starting with a valid prefix (070, 080, 090, 081, 091)")
+        
     # Check for duplicate emails
-    if any(user['email'].lower() == data['email'].lower() for user in users.values()):
+    if not validate_unique_field(users, 'email', data['email']):
         return bad_request_response(f"User with email '{data['email']}' already exists")
-    
+ 
     # Check for duplicate phone numbers
-    if any(user['phone'] == data['phone'] for user in users.values()):
+    if not validate_unique_field(users, 'phone', data['phone']):
         return bad_request_response(f"User with phone number '{data['phone']}' already exists")
-    
-    # Phone number should start with a valid prefix
-    valid_prefixes = ['070', '080', '090', '081', '091']
-    if not any(data['phone'].startswith(prefix) for prefix in valid_prefixes):
-        return bad_request_response("Phone number must start with a valid prefix (070, 080, 090, 081, 091)")
     
     user = {
         'id': len(users) + 1,
@@ -100,61 +85,46 @@ def update_user(user_id):
     data = request.get_json() # Get data from request body
     user = users.get(user_id) # Fetch user by id
 
+    # Ensure payload is json and not empty or null
+    payload = validate_payload(data)
+    if payload:
+        return bad_request_response(payload)
+
+
+    # Validate required fields
+    error = validate_required_fields(data, 'firstName') or validate_required_fields(data,'lastName') or validate_required_fields(data,'email') or validate_required_fields(data,'phone') or validate_field_length(data,'firstName') or validate_field_length(data,'lastName')
+    if error:
+        return bad_request_response(error)
+
     # Check if user exists
     if not user:
         return not_found_response(f"User with id {user_id} not found")
     
-    # Update fields if provided
-    if 'firstName' in data:
-        # Validate data type, none emptiness and length
-        if not isinstance(data['firstName'], str) or not data['firstName'].strip() or not data['firstName'].isalpha() or len(data['firstName']) < 2:
-            return bad_request_response("firstName must be a non-empty alphabetic string of at least 2 characters")
-        
-        user['firstName'] = data['firstName'] # Update firstName
-    
-    if 'lastName' in data:
-        # Validate data type, none emptiness and length
-        if not isinstance(data['lastName'], str) or not data['lastName'].strip() or not data['lastName'].isalpha() or len(data['lastName']) < 2:
-            return bad_request_response("lastName must be a non-empty alphabetic string of at least 2 characters")
-        
-        user['lastName'] = data['lastName'] # Update lastName
-    
-    if 'email' in data:
-        # Validate data type
-        if not isinstance(data['email'], str):
-            return bad_request_response("Email must be a valid string")
-        
-        # Validate email format and none emptiness
-        if '@' not in data['email'] or '.' not in data['email'] or not data['email'].strip():
-            return bad_request_response("Invalid email format")
-        
-        # Check for duplicate emails
-        if any(u['email'].lower() == data['email'].lower() and u['id'] != user_id for u in users.values()):
-            return bad_request_response(f"User with email '{data['email']}' already exists")
-        
-        user['email'] = data['email'] # Update email
-    
-    if 'phone' in data:
 
-        # Validate data type
-        if not isinstance(data['phone'], str):
-            return bad_request_response("Phone number must be a string of digits")
-        
-        # Validate phone number length, none emptiness, and numeric
-        if not data['phone'].isdigit() or len(data['phone']) < 11 or not data['phone'].strip():
-            return bad_request_response("Phone number must be numeric and at least 11 digits long")
-        
-        # Validate phone number prefix
-        valid_prefixes = ['070', '080', '090', '081', '091']
-        if not any(data['phone'].startswith(prefix) for prefix in valid_prefixes):
-            return bad_request_response("Phone number must start with a valid prefix (070, 080, 090, 081, 091)")
-        
-        # Check for duplicate phone numbers
-        if any(u['phone'] == data['phone'] and u['id'] != user_id for u in users.values()):
-            return bad_request_response(f"User with phone number '{data['phone']}' already exists")
-        
-        user['phone'] = data['phone'] # Update phone number
+    # Validate email format (basic validation)
+    if not validate_email(data['email']):
+        return bad_request_response("Invalid email format")
     
+    # Validate phone number (basic validation)
+    if not validate_phone(data['phone']):
+                return bad_request_response("Phone number must be numeric and at least 11 digits long starting with a valid prefix (070, 080, 090, 081, 091)")
+        
+    # Check for duplicate emails
+    if not validate_unique_field(users, 'email', data['email']):
+        return bad_request_response(f"User with email '{data['email']}' already exists")
+ 
+    # Check for duplicate phone numbers
+    if not validate_unique_field(users, 'phone', data['phone']):
+        return bad_request_response(f"User with phone number '{data['phone']}' already exists")
+      
+    user = {
+        'id': user_id,
+        'firstName': data['firstName'],
+        'lastName': data['lastName'],
+        'email': data['email'],
+        'phone': data['phone']
+    }
+
     users[user_id] = user # Save updated user
     return success_response("User updated successfully", format_response(user,'user'))
 
@@ -201,8 +171,14 @@ def create_task():
     global next_task_id # Access the global task ID counter
     data = request.get_json() # Get data from request body
 
-    if not data or 'title' not in data or 'description' not in data or 'duration' not in data:
-        return bad_request_response("user_id, title, duration and description fields are required")
+    payload = validate_payload(data)
+    if payload:
+        return bad_request_response(payload)
+  
+    # Validate required fields
+    error = validate_required_fields(data, 'title') or validate_required_fields(data,'description') or validate_required_fields(data,'duration') or  validate_field_length(data,'title')
+    if error:
+        return bad_request_response(error)
     
     # user_id field is in the payload then extract it and perform validation else set default to null
     if 'user_id' in data and isinstance(data['user_id'], int) and data['user_id'] <= 0:
@@ -218,22 +194,14 @@ def create_task():
     else:
         user_id = None # Set user_id to None if not provided or invalid
 
-     # Check for duplicate title
-    if any(task['title'].lower() == data['title'].lower() for task in tasks.values()):
+    # Check for duplicate title
+    if not validate_unique_field(tasks, 'title', data['title']):
         return bad_request_response(f"Task with title '{data['title']}' already exists")
-    
-    # Validate title is a non-empty string
-    if not isinstance(data['title'], str) or not data['title'].strip() or len(data['title']) < 3:
-        return bad_request_response("Title must be a non-empty string")
-    
+     
     # Validate duration is a positive integer
-    if not isinstance(data['duration'], int) or data['duration'] <= 5:
-        return bad_request_response("Duration must be a positive integer representing minutes, and must not be less than 5 minutes")
-    
-    # Validate description is a string and can not be empty
-    if not isinstance(data['description'], str) or not data['description'].strip():
-        return bad_request_response("Description must be a non-empty string")
-    
+    if not positive_integer(data['duration']):
+        return bad_request_response(f"Duration must be a positive integer representing minutes, and must not be less than 5 minutes")
+     
     task_status = 'pending'
     task = {
         'id': len(tasks) + 1,
