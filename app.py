@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from utils.response import bad_request_response, format_item, format_items, format_response, make_response, success_response
+from utils.response import bad_request_response, format_item, format_items, format_response, make_response, not_found_response, success_response
 from utils.validators import positive_integer, positive_value, validate_payload, validate_required_fields, validate_unique_field
 
 app = Flask(__name__)
@@ -16,13 +16,8 @@ item_id_counter = 1
 @app.route('/api/v1/item/all', methods=['GET'])
 def get_items():
     if not items:
-        return jsonify(make_response("success", "No items found", [], 200)[0]), 200
-    return jsonify(make_response(
-        "success",
-        "Items retrieved successfully",
-        format_items(items),
-        200
-    )[0]), 200
+        return success_response("No items found", format_response(items,'items'))
+    return success_response("Items retrieved successfully", format_response(items,'items'))
 
 
 #fetch single item by id
@@ -30,13 +25,8 @@ def get_items():
 def get_item(item_id):
     single_item = next((item for item in items if item['id'] == item_id), None)
     if single_item:
-        return jsonify(make_response(
-            "success",
-            "Item retrieved successfully",
-            format_item(single_item),
-            200
-        )[0]), 200
-    return jsonify(make_response("error", f"Item {item_id} not found", None, 404)[0]), 404
+        return success_response("Item retrieved successfully", format_response(single_item,'item'))
+    return not_found_response(f"Item with id {item_id} not found")
 
 
 
@@ -85,7 +75,7 @@ def update_item(item_id):
     item = next((t for t in items if t["id"] == item_id), None)
 
     if not item:
-        return jsonify(make_response("error", f"Item with ID: {item_id} not found", None, 404)[0]), 404
+        return not_found_response(f"Item with id {item_id} not found")
 
     item["name"] = data.get("name", item["name"])
     item["description"] = data.get("description", item["description"])
@@ -93,21 +83,19 @@ def update_item(item_id):
     item["unit_price"] = data.get("unit_price", item["unit_price"])
     item["total_price"] = item["quantity"] * item["unit_price"]
 
-    return jsonify(make_response(
-        "success",
-        "Item updated successfully",
-        format_item(item),
-        200
-    )[0]), 200
+    return success_response("Item updated successfully",format_response(item,'item'), 200)
 
 #delete item
 @app.route('/api/v1/item/<int:item_id>/delete', methods=['DELETE'])
 def delete_item(item_id):
     global items
-    items = [item for item in items if item['id'] != item_id]
-    return jsonify(make_response(
-        "success",
-        "Item deleted successfully",
-        None,
-        200
-    )[0]), 200
+
+    # Find the item
+    item_to_delete = next((item for item in items if item['id'] == item_id), None)
+    
+    if item_to_delete is None:
+        return not_found_response(f"Item with id {item_id} not found")
+    
+    # Remove item from list
+    items.remove(item_to_delete)
+    return success_response("Item deleted successfully")
