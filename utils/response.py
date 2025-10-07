@@ -84,5 +84,9 @@ def format_response(data, data_type):
         return format_users(data)
     elif data_type == 'tasks':
         return format_tasks(data)
+    elif data_type == 'item':
+        return format_item(data)
+    elif data_type == 'items':
+        return format_items(data)
     else:
         return data

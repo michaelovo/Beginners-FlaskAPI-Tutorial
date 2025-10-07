@@ -54,11 +54,22 @@ def validate_unique_field(tables, field, value):
     Check if a field value is unique across all records.
     Returns True if unique, False if duplicate exists.
     """
+
+    # handles both list and dictionary
+    records = tables.values() if isinstance(tables, dict) else tables
     return not any(
         record.get(field, '').lower() == value.lower() 
-        for record in tables.values()
+        for record in records
     )
 
-# Validate duration
+# Validate integer
 def positive_integer(value, min =1 ):
      return isinstance(value,int) and value >= min
+
+# Validate float
+def positive_float(value, min = 1.0):
+     return isinstance(value, float) and value >= min
+
+# Validate positive value
+def positive_value(value):
+     return positive_integer(value) or positive_float(value)

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
-from utils.response import format_item, format_items, make_response
+from utils.response import bad_request_response, format_item, format_items, format_response, make_response, success_response
+from utils.validators import positive_integer, positive_value, validate_payload, validate_required_fields, validate_unique_field
 
 app = Flask(__name__)
 
@@ -44,39 +45,24 @@ def get_item(item_id):
 def add_item():
     global item_id_counter
     data = request.get_json()
+    
+    # Validate payload
+    payload = validate_payload(data)
+    if payload:
+        return bad_request_response(payload)
 
     # Validate required fields
-    if not data or 'name' not in data or 'unit_price' not in data or 'quantity' not in data:
-        return jsonify({
-            "status": "error",
-            "message": "Missing required fields: name, quantity, unit_price"
-        }), 400
+    error = validate_required_fields(data,'name') or validate_required_fields(data,'unit_price') or validate_required_fields(data,'quantity')
+    if error:
+        return bad_request_response(error)
     
     # Validate data types
-    if not isinstance(data['name'], str) or not isinstance(data['unit_price'], (int, float)) or not isinstance(data['quantity'], int):
-        return jsonify({
-            "status": "error",
-            "message": "Invalid data types for fields: name must be a string, quantity must be an integer, unit_price must be a number"
-        }), 400
+    if not positive_value(data['unit_price']) or not positive_integer(data['quantity']):
+        return bad_request_response('Invalid data type: quantity must be a positive integer, unit_price must be a positive number')
 
-    #validate name is not empty
-    if not data['name'].strip():
-        return jsonify({
-            "status": "error",
-            "message": "Item name cannot be empty"
-        }), 400
-    
-    # Validate quantity and unit_price are non-negative
-    if data['quantity'] <= 0 or data['unit_price'] <= 0:
-        return jsonify({
-            "status": "error",
-            "message": "Quantity and unit_price must be non-negative/greater than zero"
-        }), 400
-
-    
     # Check for duplicate item names (case-insensitive)
-    if any(item['name'].lower() == data['name'].lower() for item in items):
-        return jsonify(make_response("error", f"Item with name '{data['name']}' already exists", None, 400)[0]), 400
+    if not validate_unique_field(items,'name', data['name']):
+        return bad_request_response(f"Item with name '{data['name']}' already exists")
        
     new_item = {
         "id": len(items) + 1,
@@ -89,12 +75,7 @@ def add_item():
     items.append(new_item)
     item_id_counter += 1
 
-    return jsonify(make_response(
-        "success",
-        "New item added successfully",
-        format_item(new_item),
-        200
-    )[0]), 200
+    return success_response("New item added successfully",format_response(new_item,'item'), 200)
 
 
 # Update a item
