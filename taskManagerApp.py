@@ -66,9 +66,9 @@ def create_user():
 def get_users():
 
     if not users:
-        return jsonify(success_response("No users at the moment"))
+        return success_response("No users at the moment")
     
-    return jsonify(success_response("Users retrieved successfully",format_response(users.values(), 'users')))
+    return success_response("Users retrieved successfully",format_response(users.values(), 'users'))
 
 
 # Fetch single user by id
@@ -77,7 +77,7 @@ def get_user(user_id):
     user = users.get(user_id)
     if not user:
         return not_found_response(f"User with id {user_id} not found")
-    return jsonify(success_response("User retrieved successfully", format_response(user,'user')))
+    return success_response("User retrieved successfully", format_response(user,'user'))
 
 # Update user by id and avoid duplicate email and phone number
 @app.route('/api/v1/user/<int:user_id>/update', methods=['PUT'])
@@ -142,7 +142,7 @@ def get_tasks_by_user(user_id):
     if not user_tasks:
         return success_response(f"No tasks assign to user with id {user_id} at the moment", [])
     
-    return jsonify(success_response(f"Tasks for user with id {user_id} retrieved successfully", format_response(user_tasks, 'tasks')))
+    return success_response(f"Tasks for user with id {user_id} retrieved successfully", format_response(user_tasks, 'tasks'))
 
     
 # Delete user by id
@@ -223,9 +223,9 @@ def create_task():
 def get_tasks():
 
     if not tasks:
-        return jsonify(success_response("No tasks at the moment"))
+        return success_response("No tasks at the moment")
     
-    return jsonify(success_response("Tasks retrieved successfully",format_response(tasks.values(), 'tasks')))
+    return success_response("Tasks retrieved successfully",format_response(tasks.values(), 'tasks'))
 
 
 # Fetch single task by id
@@ -234,7 +234,7 @@ def get_task(task_id):
     task = tasks.get(task_id)
     if not task:
         return not_found_response(f"Task with id {task_id} not found")
-    return jsonify(success_response("Task retrieved successfully", format_response(task,'task')))
+    return success_response("Task retrieved successfully", format_response(task,'task'))
 
 
 # Update task by id
@@ -243,27 +243,34 @@ def update_task(task_id):
     data = request.get_json() # Get data from request body
     task = tasks.get(task_id) # Fetch task by id
 
+    # Ensure payload is json and not empty or null
+    payload = validate_payload(data)
+    if payload:
+        return bad_request_response(payload)
+
     # Check if task exists
     if not task:
         return not_found_response(f"Task with id {task_id} not found")
-    
-    # Validate data type, length and none emptiness for title
+
+
+    # Validate and update title
     if 'title' in data:
-        if not isinstance(data['title'], str) or not data['title'].strip() or len(data['title']) < 3:
-            return bad_request_response("Title must be a non-empty string of at least 3 characters")
-        
+        title_error = validate_field_length(data, 'title', 3)
+        if title_error:
+            return bad_request_response(title_error)
         task['title'] = data['title'] # Update title
+
     
-    # Validate data type and none emptiness
+    # Validate and update description
     if 'description' in data:
-        if not isinstance(data['description'], str) or not data['description'].strip():
-            return bad_request_response("Description must be a non-empty string")
-        
-        task['description'] = data['description'] # Update description
+        description_error = validate_required_fields(data,'description')
+        if description_error:
+            return bad_request_response(description_error)
+        task['description'] = data['description'] # Update duration
     
-    # Validate data type and positive integer
+    # Validate and update duration
     if 'duration' in data:
-        if not isinstance(data['duration'], int) or data['duration'] <= 5:
+        if not positive_integer(data['duration'],5):
             return bad_request_response("Duration must be a positive integer representing minutes, and must not be less than 5 minutes")
         
         task['duration'] = data['duration'] # Update duration
